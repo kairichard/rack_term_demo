@@ -41,7 +41,10 @@ class MyApp < Rails::Application
   config.middleware.delete "Rack::Lock"
   config.middleware.delete "ActionDispatch::Flash"
   config.middleware.delete "ActionDispatch::BestStandardsSupport"
+  config.middleware.delete "Rails::Rack::Logger"
+  # config.middleware.swap   "ActionDispatch::Static",Rack::Static, urls: ["/stylesheets", "/images"], root: Dir.pwd+"/public"
 
+  
   # We need a secret token for session, cookies, etc.
   config.secret_token = "asodjoaishdoh23iuhe387zr8723hf87wehf32847ghfivudkhfijlkofdpq29u104u9120340ur32r98u32987z4t234e3r2ewfus9ghersioe"
 end
@@ -52,7 +55,7 @@ class HelloController < ActionController::Metal
   include ActionController::Rendering
 
   def world
-    render :text => "Hello world!"
+    render text: "Hello world!"
   end
 end
 
@@ -60,13 +63,13 @@ end
 MyApp.initialize!
 
 # Print the stack for fun!
-puts ">> Starting Rails lightweight stack"
+puts ">> Starting Rails lightweight"
 Rails.configuration.middleware.each do |middleware|
   puts "use #{middleware.inspect}"
 end
 puts "run #{Rails.application.class.name}.routes"
 
 # Run it (originally in config.ru)
-use Rack::Static, :urls => ["/css", "/images"], :root => "public"
 
-run MyApp.routes
+
+run MyApp

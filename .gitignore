@@ -1,0 +1,11 @@
+.bundle
+.rvmrc
+config/dblogin.yml
+config/environments/development.rb
+db/*.sqlite3
+db/schema.rb
+log/*.log
+tmp/**/*
+.DS_Store
+.rvmrc
+

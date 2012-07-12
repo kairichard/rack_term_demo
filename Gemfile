@@ -9,4 +9,4 @@ gem "tzinfo"
 
 # Let's use thin
 gem "thin"
-
+gem 'debugger', group: [:development, :test]
