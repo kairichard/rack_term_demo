@@ -67,4 +67,6 @@ end
 puts "run #{Rails.application.class.name}.routes"
 
 # Run it (originally in config.ru)
+use Rack::Static, :urls => ["/css", "/images"], :root => "public"
+
 run MyApp.routes
