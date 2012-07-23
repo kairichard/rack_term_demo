@@ -7,6 +7,8 @@ gem "actionpack", "~> 3.2"
 gem "railties",   "~> 3.2"
 gem "tzinfo"
 
+gem 'websocket-rack'
+gem 'faye'
 # Let's use thin
 gem "thin"
 gem 'debugger', group: [:development, :test]

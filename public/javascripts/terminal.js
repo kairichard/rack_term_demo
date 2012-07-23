@@ -25,13 +25,14 @@ window.Terminal = (function(j) {
       '_cursor':'<span class="'+_terminal_cursor_class+' on">&nbsp;<span>'
     },
     'callbacks':{
-      successful_execution:function(command){}
+      after_execution:function(command){}
     }
   };
   var config = {}     
  
   var keyCodes = {
     // left
+    32: _cl_insert_blank, 
     37: function(){
       var cursor = _terminal_container.find(j_terminal_cursor_class);
       if(cursor.prev().length != 0){
@@ -77,7 +78,7 @@ window.Terminal = (function(j) {
       var command = _cl_readin();
       _terminal_container.blur();
       if(_handle_command(command)){
-        config.callbacks.successful_execution.call(_terminal_container,command);
+        config.callbacks.after_execution.call(_terminal_container,command);
       };
       if(command != ""){
         history.push(command);
@@ -119,12 +120,20 @@ window.Terminal = (function(j) {
     // 68: deleteNextWord
   };
 
+  function createGUID() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        var r = Math.random()*16|0, v = c == 'x' ? r : (r&0x3|0x8);
+        return v.toString(16);
+    });
+  }
+  
   function _cl_clear(){
     _terminal_container.find(j_terminal_cl_class).last().find(j_terminal_cl_char_class).remove();
   }
 
   function _handle_command(command){
     if(command != ""){
+      config.client.publish("/command",{ text:command,backchannel:config.guid });
       _terminal_container.append(j('<div class="'+_terminal_message_success_class+'">'+command+'</div>'));
       return true;
     }else{
@@ -171,7 +180,7 @@ window.Terminal = (function(j) {
       cancelKeyPress = keyCode;
       (ctrlCodes[keyCode])();
       return false;
-    } else if (e.altKey  && keyCode in altCodes) {
+    } else if (e.altKey && keyCode in altCodes) {
       cancelKeyPress = keyCode;
       (altCodes[keyCode])();
       return false;
@@ -181,14 +190,19 @@ window.Terminal = (function(j) {
 
   function _cl_insert(k){
     if(typeof k == 'string'){
-      k = j.makeArray(k);
+      k = k.split("");
     }
     j.map(k,function(n,i){
       _terminal_container.find(j_terminal_cursor_class)
         .before('<span class="'+_terminal_cl_char_class+'">'+n+'</span>');
     })
   }
-  
+ 
+  function _cl_insert_blank(){
+    _terminal_container.find(j_terminal_cursor_class)
+      .before('<span class="'+_terminal_cl_char_class+'">&nbsp;</span>');
+  }
+
   function _handle_insertion(e){
     history.reset_current_position();
     var keyCode = _keyCodeFromEvent(e);
@@ -196,13 +210,7 @@ window.Terminal = (function(j) {
       // http://stackoverflow.com/questions/2176861/javascript-get-clipboard-data-on-paste-event-cross-browser
       return true;
     }
-    var code = String.fromCharCode(keyCode) 
-
-    if(code == " "){
-        code = "&nbsp;"
-    }
-    
-    _cl_insert(code);
+    _cl_insert(String.fromCharCode(keyCode));    
 
     if ($.browser.webkit) return false;
   }
@@ -230,7 +238,12 @@ window.Terminal = (function(j) {
       return this;
     },
     create: function(terminal_container) {
+      config.guid = createGUID();
+      config.client.subscribe('/backchannel/'+config.guid,function(m){
+        console.log(m);
+      });
       _terminal_container = terminal_container;
+      _handle_command("login");
       _terminal_container.append(j(config.elements.prompt));
       _terminal_container.append(j(config.elements._command_line).append(j(config.elements._cursor)));
 

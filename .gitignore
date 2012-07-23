@@ -1,3 +1,4 @@
+.env
 .bundle
 .rvmrc
 config/dblogin.yml
