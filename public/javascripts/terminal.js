@@ -15,7 +15,6 @@ window.Terminal = (function(j) {
   var _terminal_cl_char_class = 'terminal-cl-char';
   var j_terminal_cl_char_class = '.'+_terminal_cl_char_class;
   
-  var _terminal_message_success_class = 'terminal-message-sucess'
   var history = EndlessIterator.create([],function(){ return this });
 
   var defaults = {
@@ -25,7 +24,18 @@ window.Terminal = (function(j) {
       '_cursor':'<span class="'+_terminal_cursor_class+' on">&nbsp;<span>'
     },
     'callbacks':{
-      after_execution:function(command){}
+      after_execution:function(command){},
+      async:{
+        command_return:function(resp){
+          console.log(resp);
+          _terminal_container.append(j('<div class="terminal-message-'+resp["exitcode"]+'">'+resp["response"].replace(/[\n\r]+/g, "<br/>")+'</div>'));
+          _terminal_container.find(j_terminal_cursor_class).remove();
+          _terminal_container.append(j(config.elements.prompt));
+          _terminal_container.append(j(config.elements._command_line).append(j(config.elements._cursor)));
+          _terminal_container.focus();
+          config.callbacks.after_execution.call(_terminal_container,"");
+        }
+      }
     }
   };
   var config = {}     
@@ -77,17 +87,12 @@ window.Terminal = (function(j) {
     13: function(){
       var command = _cl_readin();
       _terminal_container.blur();
-      if(_handle_command(command)){
-        config.callbacks.after_execution.call(_terminal_container,command);
-      };
+      _handle_command(command)
+     
       if(command != ""){
         history.push(command);
         history.current_position = history.length();
       }
-      _terminal_container.find(j_terminal_cursor_class).remove();
-      _terminal_container.append(j(config.elements.prompt));
-      _terminal_container.append(j(config.elements._command_line).append(j(config.elements._cursor)));
-      _terminal_container.focus();
 
     },
     // // tab
@@ -132,14 +137,7 @@ window.Terminal = (function(j) {
   }
 
   function _handle_command(command){
-    if(command != ""){
-      config.client.publish("/command",{ text:command,backchannel:config.guid });
-      _terminal_container.append(j('<div class="'+_terminal_message_success_class+'">'+command+'</div>'));
-      return true;
-    }else{
-      _terminal_container.append("<br>");
-      return false;
-    }
+    config.client.publish("/command",{ command:command,backchannel:config.guid });
   }
 
   function _cl_readin(){
@@ -193,14 +191,18 @@ window.Terminal = (function(j) {
       k = k.split("");
     }
     j.map(k,function(n,i){
+      if(n == " "){
+        _cl_insert_blank();
+      }else{
       _terminal_container.find(j_terminal_cursor_class)
         .before('<span class="'+_terminal_cl_char_class+'">'+n+'</span>');
-    })
+       }
+   })
   }
  
   function _cl_insert_blank(){
     _terminal_container.find(j_terminal_cursor_class)
-      .before('<span class="'+_terminal_cl_char_class+'">&nbsp;</span>');
+      .before('<span class="'+_terminal_cl_char_class+' whitespace"> </span>');
   }
 
   function _handle_insertion(e){
@@ -239,13 +241,14 @@ window.Terminal = (function(j) {
     },
     create: function(terminal_container) {
       config.guid = createGUID();
+
       config.client.subscribe('/backchannel/'+config.guid,function(m){
-        console.log(m);
+        config.callbacks.async.command_return(m);
       });
+
       _terminal_container = terminal_container;
+
       _handle_command("login");
-      _terminal_container.append(j(config.elements.prompt));
-      _terminal_container.append(j(config.elements._command_line).append(j(config.elements._cursor)));
 
       _terminal_container.focus(_handle_focus);
       _terminal_container.blur(_handle_blur);

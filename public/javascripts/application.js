@@ -13,7 +13,7 @@ jQuery(document).ready(function(){
       client:client,
       callbacks:{
         after_execution:function(command){
-          $("html, body").animate({ scrollTop: $(document).height() }, "fast");
+          $("body").animate({ scrollTop: $(document).height() }, "fast");          
         }
       }
     }).create(jQuery('#prompt'))

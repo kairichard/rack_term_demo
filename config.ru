@@ -21,6 +21,8 @@
 # config/application.rb, config/environment.rb and config.ru
 # existing in any Rails 3 app. Here they are simply in one
 # file and without the comments.
+$stdout.sync = true
+
 require 'thin'
 require "rails"
 require "rails/all"
