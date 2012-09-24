@@ -137,7 +137,7 @@ window.Terminal = (function(j) {
   }
 
   function _handle_command(command){
-    config.client.publish("/command",{ command:command,backchannel:config.guid });
+    config.client.publish("/command",{ command:command,session_guid:config.guid });
   }
 
   function _cl_readin(){

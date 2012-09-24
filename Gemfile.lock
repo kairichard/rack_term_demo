@@ -97,6 +97,7 @@ PLATFORMS
 
 DEPENDENCIES
   actionpack (~> 3.2)
+  activesupport (~> 3.2)
   debugger
   faye
   railties (~> 3.2)

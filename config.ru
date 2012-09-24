@@ -46,7 +46,7 @@ class ClientAuth
     callback.call(message)
   end
   def incoming(message,callback)
-    puts callback.call(message)
+    callback.call(message)
   end
 end
 class MyApp < Rails::Application

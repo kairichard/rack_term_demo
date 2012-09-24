@@ -1,5 +1,6 @@
 $stdout.sync = true
 
+require 'debug'
 require 'optparse'
 require 'faye'
 require 'eventmachine'
@@ -8,130 +9,45 @@ require 'optparse/time'
 require 'ostruct'
 require 'pp'
 require 'shellwords'
+require 'json'
+require 'active_support/all'
+load 'kash.rb'
 
-AVAILABLE_EXECUTABLES = [:echo]
+class CommandDispatch
+  def initialize(message)
+    @return_object = {}
 
-class OptparseExample
-
-  CODES = %w[iso-2022-jp shift_jis euc-jp utf8 binary]
-  CODE_ALIASES = { "jis" => "iso-2022-jp", "sjis" => "shift_jis" }
-
-  #
-  # Return a structure describing the options.
-  #
-  def self.parse(args)
-    # The options specified on the command line will be collected in *options*.
-    # We set default values here.
-    options = OpenStruct.new
-    options.library = []
-    options.inplace = false
-    options.encoding = "utf8"
-    options.transfer_type = :auto
-    options.verbose = false
-    options.banner = ""
-
-    opts = OptionParser.new do |opts|
-      opts.banner = "Usage: example.rb [options]"
-
-      opts.separator ""
-      opts.separator "Specific options:"
-
-      # Mandatory argument.
-      opts.on("-r", "--require LIBRARY",
-              "Require the LIBRARY before executing your script") do |lib|
-        options.library << lib
-      end
-
-      # Optional argument; multi-line description.
-      opts.on("-i", "--inplace [EXTENSION]", "Edit ARGV files in place","  (make backup if EXTENSION supplied)") do |ext|
-        options.inplace = true
-        options.extension = ext || ''
-        options.extension.sub!(/\A\.?(?=.)/, ".")  # Ensure extension begins with dot.
-      end
-
-      # Cast 'delay' argument to a Float.
-      opts.on("--delay N", Float, "Delay N seconds before executing") do |n|
-        options.delay = n
-      end
-
-      # Cast 'time' argument to a Time object.
-      opts.on("-t", "--time [TIME]", Time, "Begin execution at given time") do |time|
-        options.time = time
-      end
-
-      # Cast to octal integer.
-      opts.on("-F", "--irs [OCTAL]", OptionParser::OctalInteger,
-              "Specify record separator (default \\0)") do |rs|
-        options.record_separator = rs
-      end
-
-      # List of arguments.
-      opts.on("--list x,y,z", Array, "Example 'list' of arguments") do |list|
-        options.list = list
-      end
-
-      # Keyword completion.  We are specifying a specific set of arguments (CODES
-      # and CODE_ALIASES - notice the latter is a Hash), and the user may provide
-      # the shortest unambiguous text.
-      code_list = (CODE_ALIASES.keys + CODES).join(',')
-      opts.on("--code CODE", CODES, CODE_ALIASES, "Select encoding",
-              "  (#{code_list})") do |encoding|
-        options.encoding = encoding
-      end
-
-      # Optional argument with keyword completion.
-      opts.on("--type [TYPE]", [:text, :binary, :auto],
-              "Select transfer type (text, binary, auto)") do |t|
-        options.transfer_type = t
-      end
-
-      # Boolean switch.
-      opts.on("-v", "--[no-]verbose", "Run verbosely") do |v|
-        options.verbose = v
-      end
-
-      opts.separator ""
-      opts.separator "Common options:"
-
-      # No argument, shows at tail.  This will print an options summary.
-      # Try it and see!
-      opts.on_tail("-h", "--help", "Show this message") do
-        options.banner = opts.to_s
-      end
-
-      # Another typical switch to print the version.
-      opts.on_tail("--version", "Show version") do
-        options.banner = OptionParser::Version.join('.')
-      end
+    message["command"] = "empty" if message["command"] == ""
+    begin 
+      args = message["command"].shellsplit 
+    rescue ArgumentError => e 
+      @return_object = { response:"-kash: "+e.to_s, exitcode: 127 }
+      return 
     end
-    opts.parse!(args)
-    options
-  end  # parse()
 
-end  # class OptparseExample
+    command = args.first.downcase
+    Sys.user_id = message['session_guid'] 
+    begin
+      raise Exception.new("comand not found") unless Sys.apps.available_apps.has_key?(command.to_sym)
+      @return_object = { response: Sys.apps.available_apps[command.to_sym].execute(args[1..-1]), exitcode: 0 }
+    rescue Exception => e 
+      @return_object = { response:"-kash: #{command}: #{e.message}", exitcode: 127 }
+    end
 
+  end
+  def return_object
+    @return_object
+  end
+end
 
 host = (ENV["FAYEHOST"] ? ENV["FAYEHOST"] : "http://kairichardkoenig.de") + '/socket'
+
 EM.run {
   client = Faye::Client.new(host)
   client.subscribe('/command') do |message|
-    resp_hash = {}
-
-    message["command"] = "empty" if message["command"] == ""
-    args = message["command"].shellsplit
-    command = args.first.downcase.to_sym
-
-    unless AVAILABLE_EXECUTABLES.include?(command)
-      resp_hash = { response:"-kash: #{command}: command not found", exitcode: 127 }
-    end  
-    
-    if command == :echo
-      resp_hash = { response: args[1..-1].join(" "), exitcode:0 }
-    end
-    if command == :empty
-      resp_hash = { response: "\n", exitcode:0 }
-    end
-    client.publish('/backchannel/'+message["backchannel"],resp_hash )    
+    client.publish('/backchannel/'+message["session_guid"],CommandDispatch.new(message).return_object)    
   end 
 }
+
+
 
