@@ -1,6 +1,5 @@
 $stdout.sync = true
 
-require 'debug'
 require 'optparse'
 require 'faye'
 require 'eventmachine'

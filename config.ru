@@ -71,7 +71,7 @@ class MyApp < Rails::Application
                        :timeout    => 125,
                        :extensions => [ClientAuth.new]
 
-  
+  config.active_support.deprecation = :notify 
   # We need a secret token for session, cookies, etc.
   config.secret_token = "asodjoaishdoh23iuhe387zr8723hf87wehf32847ghfivudkhfijlkofdpq29u104u9120340ur32r98u32987z4t234e3r2ewfus9ghersioe"
 end
